@@ -92,10 +92,12 @@ export const DRAGON_UI_INFO = DRAGON_CONFIGS.map(cfg => ({
 export class HatcheryScene extends Phaser.Scene {
   private dragonContainer!: Phaser.GameObjects.Container;
   private eggContainer!: Phaser.GameObjects.Container;
-  private eggGfx!: Phaser.GameObjects.Graphics;
+  private eggGfx: Phaser.GameObjects.Graphics | null = null;
   private idleTween?: Phaser.Tweens.Tween;
   private currentBreathType: DragonVisualConfig['breathType'] = 'fire';
   private currentSizeScale: number = 1.0;
+  // Incremented on every reset — stale tween/timer callbacks compare against this
+  private _token = 0;
 
   constructor() { super({ key: 'HatcheryScene' }); }
 
@@ -118,9 +120,11 @@ export class HatcheryScene extends Phaser.Scene {
   }
 
   private drawEgg(crackLevel: 0 | 1 | 2 | 3 = 0) {
-    if (this.eggGfx) {
+    // Only destroy if Phaser hasn't already cleaned it up (e.g. via removeAll(true))
+    if (this.eggGfx?.active) {
       this.eggGfx.destroy();
     }
+    this.eggGfx = null;
     this.eggGfx = this.add.graphics();
 
     // Inner glow for level 2+
@@ -181,6 +185,11 @@ export class HatcheryScene extends Phaser.Scene {
   }
 
   showEgg() {
+    this._token++; // invalidate any in-flight tween/timer callbacks
+    this.tweens.killTweensOf(this.eggContainer);
+    this.tweens.killTweensOf(this.dragonContainer);
+    if (this.idleTween) { this.idleTween.destroy(); this.idleTween = undefined; }
+    this.eggGfx = null;
     this.dragonContainer.setVisible(false);
     this.dragonContainer.removeAll(true);
     this.eggContainer.setVisible(true);
@@ -189,17 +198,17 @@ export class HatcheryScene extends Phaser.Scene {
     this.eggContainer.setPosition(200, 200);
     this.eggContainer.removeAll(true);
     this.drawEgg(0);
-    if (this.idleTween) this.idleTween.destroy();
     this.startEggBob();
   }
 
   playHatch(dragonIndex: number, onComplete?: () => void) {
-    // Stop idle bob
-    if (this.idleTween) {
-      this.idleTween.stop();
-    }
+    this._token++;
+    const token = this._token;
+    if (this.idleTween) { this.idleTween.destroy(); this.idleTween = undefined; }
+    this.tweens.killTweensOf(this.eggContainer);
 
     // Phase 1: jiggle egg
+    this.eggGfx = null;
     this.eggContainer.removeAll(true);
     this.drawEgg(0);
 
@@ -211,7 +220,9 @@ export class HatcheryScene extends Phaser.Scene {
       yoyo: true,
       repeat: 8,
       onComplete: () => {
+        if (this._token !== token) return;
         // Phase 2: show cracks
+        this.eggGfx = null;
         this.eggContainer.removeAll(true);
         this.drawEgg(3);
 
@@ -223,6 +234,7 @@ export class HatcheryScene extends Phaser.Scene {
           yoyo: true,
           repeat: 12,
           onComplete: () => {
+            if (this._token !== token) return;
             // Phase 3: explode
             this.tweens.add({
               targets: this.eggContainer,
@@ -232,10 +244,12 @@ export class HatcheryScene extends Phaser.Scene {
               duration: 200,
               ease: 'Power2.easeOut',
               onComplete: () => {
+                if (this._token !== token) return;
                 this.eggContainer.setVisible(false);
                 this.spawnParticles();
                 // Phase 4: reveal dragon
                 this.time.delayedCall(150, () => {
+                  if (this._token !== token) return;
                   this.showDragonAnimated(dragonIndex, onComplete);
                 });
               },
@@ -270,6 +284,7 @@ export class HatcheryScene extends Phaser.Scene {
   }
 
   private showDragonAnimated(dragonIndex: number, onComplete?: () => void) {
+    const token = this._token;
     const cfg = DRAGON_CONFIGS[dragonIndex] ?? DRAGON_CONFIGS[0];
     this.currentBreathType = cfg.breathType;
     this.currentSizeScale = cfg.sizeScale;
@@ -287,6 +302,10 @@ export class HatcheryScene extends Phaser.Scene {
       duration: 400,
       ease: 'Back.easeOut',
       onComplete: () => {
+        if (this._token !== token) {
+          onComplete?.();
+          return;
+        }
         this.startIdleBob();
         this.playDance(onComplete);
       },
@@ -334,6 +353,7 @@ export class HatcheryScene extends Phaser.Scene {
   }
 
   playDance(onComplete?: () => void) {
+    const token = this._token;
     if (this.idleTween) this.idleTween.pause();
 
     this.tweens.add({
@@ -352,19 +372,28 @@ export class HatcheryScene extends Phaser.Scene {
       ease: 'Power2.easeOut',
       yoyo: true,
       onComplete: () => {
+        // Scene was reset mid-dance — still call onComplete to unblock React state
+        if (this._token !== token) {
+          onComplete?.();
+          return;
+        }
         if (this.idleTween) this.idleTween.resume();
         this.time.delayedCall(200, () => {
-          this.playFireBreath();
-          // After fire breath animation completes (~900ms), call onComplete
-          if (onComplete) {
-            this.time.delayedCall(1200, onComplete);
+          if (this._token !== token) {
+            onComplete?.();
+            return;
           }
+          this.playFireBreath();
+          // Always fire onComplete after breath so React never stays frozen
+          this.time.delayedCall(1200, () => onComplete?.());
         });
       },
     });
   }
 
   playFireBreath() {
+    if (!this.dragonContainer.visible) return;
+    const token = this._token;
     const s = this.currentSizeScale;
     const ox = this.dragonContainer.x + Math.round(110 * Math.max(0.6, s));
     const oy = this.dragonContainer.y + 5;
@@ -519,10 +548,12 @@ export class HatcheryScene extends Phaser.Scene {
             duration: 200,
             ease: 'Power2.easeIn',
             onComplete: () => {
-              flames.forEach(f => f.destroy());
-              // Lightning flashes twice
+              flames.forEach(f => { if (f.active) f.destroy(); });
+              // Lightning flashes twice — only if scene hasn't reset
               if (bt === 'lightning') {
-                this.time.delayedCall(120, () => this.playFireBreath());
+                this.time.delayedCall(120, () => {
+                  if (this._token === token) this.playFireBreath();
+                });
               }
             },
           });

@@ -28,7 +28,12 @@ const HatcheryGame = forwardRef<HatcherySceneRef, {}>((_, ref) => {
       height: 400,
       backgroundColor: '#0a0d0f',
       scene: [HatcheryScene],
-      scale: { mode: Phaser.Scale.FIT },
+      scale: {
+        mode: Phaser.Scale.FIT,
+        autoCenter: Phaser.Scale.CENTER_BOTH,
+        width: 400,
+        height: 400,
+      },
     });
     game.events.on('ready', () => {
       sceneRef.current = game.scene.getScene('HatcheryScene') as HatcheryScene;
@@ -41,7 +46,7 @@ const HatcheryGame = forwardRef<HatcherySceneRef, {}>((_, ref) => {
     };
   }, []);
 
-  return <div ref={containerRef} className="w-[400px] h-[400px]" />;
+  return <div ref={containerRef} className="w-full aspect-square max-w-[400px]" />;
 });
 
 HatcheryGame.displayName = 'HatcheryGame';

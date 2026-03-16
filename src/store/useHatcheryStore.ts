@@ -23,7 +23,7 @@ interface HatcheryStore {
   leaderboard: HatcheryLeaderboardEntry[];
 
   initGame(name: string, grade: Grade, difficulty: Difficulty): void;
-  submitAnswer(answer: number): { correct: boolean; pointsEarned: number; newDragon: boolean };
+  submitAnswer(answer: number): { correct: boolean; pointsEarned: number; newDragon: boolean; newDragonIndex: number; newHatchProgress: number };
   useHint(): string | null;
   nextProblem(): void;
   saveToLeaderboard(): void;
@@ -67,7 +67,7 @@ export const useHatcheryStore = create<HatcheryStore>()(
 
       submitAnswer(answer) {
         const { currentProblem, score, correctAnswers, currentStreak, hatchProgress, dragonsUnlocked, problemStartTime, grade, difficulty } = get();
-        if (!currentProblem) return { correct: false, pointsEarned: 0, newDragon: false };
+        if (!currentProblem) return { correct: false, pointsEarned: 0, newDragon: false, newDragonIndex: -1, newHatchProgress: 0 };
 
         if (answer === currentProblem.answer) {
           let pointsEarned = 20;
@@ -99,12 +99,12 @@ export const useHatcheryStore = create<HatcheryStore>()(
           const nextProblem = generateHatcheryProblem(grade, difficulty);
           set({ currentProblem: nextProblem, problemStartTime: Date.now(), hintUsed: false });
 
-          return { correct: true, pointsEarned, newDragon };
+          return { correct: true, pointsEarned, newDragon, newDragonIndex: newDragonsUnlocked - 1, newHatchProgress: newProgress };
         } else {
           set(s => ({ score: Math.max(0, s.score - 5), currentStreak: 0, hatchProgress: 0 }));
           const nextProblem = generateHatcheryProblem(grade, difficulty);
           set({ currentProblem: nextProblem, problemStartTime: Date.now(), hintUsed: false });
-          return { correct: false, pointsEarned: -5, newDragon: false };
+          return { correct: false, pointsEarned: -5, newDragon: false, newDragonIndex: -1, newHatchProgress: 0 };
         }
       },
 
