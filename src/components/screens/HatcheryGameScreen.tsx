@@ -31,6 +31,8 @@ export function HatcheryGameScreen() {
   const [isAnimating, setIsAnimating] = useState(false);
   const [previewIdx, setPreviewIdx] = useState<number | null>(null);
   const [dragonsOpen, setDragonsOpen] = useState(false);
+  const [isHatching, setIsHatching] = useState(false);
+  const [hatchingName, setHatchingName] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const [timeLeft, setTimeLeft] = useState(TIMER_SECONDS);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -108,7 +110,10 @@ export function HatcheryGameScreen() {
       if (result.newDragon) {
         const dragonIdx = result.newDragonIndex;
         if (dragonIdx >= 0) {
+          setIsHatching(true);
+          setHatchingName(DRAGON_NAMES[dragonIdx] ?? '');
           sceneRef.current?.playHatch(dragonIdx, () => {
+            setIsHatching(false);
             setFeedback(null);
             sceneRef.current?.showEgg();
             sceneRef.current?.updateEggProgress(0);
@@ -160,6 +165,17 @@ export function HatcheryGameScreen() {
   const streakFire = store.currentStreak >= 3 ? '🔥' : '';
   const streakDisplay = store.currentStreak >= 3 ? `${streakFire}×${store.currentStreak}` : `×${store.currentStreak}`;
 
+  const handleNumpad = useCallback((key: string) => {
+    if (isAnimating) return;
+    if (key === '⌫') {
+      setAnswerInput(prev => prev.slice(0, -1));
+    } else if (key === '±') {
+      setAnswerInput(prev => prev.startsWith('-') ? prev.slice(1) : prev ? '-' + prev : '-');
+    } else {
+      setAnswerInput(prev => prev.length < 6 ? prev + key : prev);
+    }
+  }, [isAnimating]);
+
   const dragonGrid = (
     <div className="grid grid-cols-5 gap-1.5">
       {Array.from({ length: 20 }, (_, i) => {
@@ -199,28 +215,40 @@ export function HatcheryGameScreen() {
     <div className="min-h-screen bg-gray-950 flex items-start justify-center p-3 md:p-4">
       <div className="flex flex-col md:flex-row gap-4 md:gap-6 w-full max-w-4xl">
 
-        {/* LEFT: Phaser canvas — below problem on mobile, beside it on desktop */}
-        <div className="flex flex-col items-center gap-2 w-full md:w-auto md:flex-shrink-0 order-2 md:order-1">
-          <div className="w-full max-w-[400px] md:w-[400px]">
+        {/* LEFT: Phaser canvas — fullscreen overlay when hatching */}
+        <div className={
+          isHatching
+            ? 'fixed inset-0 z-50 bg-black flex flex-col items-center justify-center gap-6 p-4'
+            : 'flex flex-col items-center gap-2 w-full md:w-auto md:flex-shrink-0 order-2 md:order-1'
+        }>
+          {isHatching && (
+            <div className="text-center">
+              <p className="text-gray-400 text-sm uppercase tracking-widest mb-1">A new dragon hatches</p>
+              <p className="text-yellow-400 text-3xl font-bold">{hatchingName}</p>
+            </div>
+          )}
+          <div className={isHatching ? 'w-[min(90vw,80vh)]' : 'w-full max-w-[400px] md:w-[400px]'}>
             <HatcheryGame ref={sceneRef} />
           </div>
-          <div className="flex items-center justify-center gap-2 h-6 w-full max-w-[400px]">
-            {previewIdx !== null ? (
-              <>
-                <span className="text-yellow-300 text-sm font-bold">{DRAGON_NAMES[previewIdx]}</span>
-                <button
-                  onClick={handleClosePreview}
-                  className="text-gray-500 hover:text-white text-xs border border-gray-700 rounded px-2 py-0.5 transition-colors"
-                >
-                  ← Back
-                </button>
-              </>
-            ) : (
-              <p className="text-gray-400 text-sm font-medium">
-                {store.dragonsUnlocked > 0 ? DRAGON_NAMES[store.dragonsUnlocked - 1] : 'Waiting to hatch...'}
-              </p>
-            )}
-          </div>
+          {!isHatching && (
+            <div className="flex items-center justify-center gap-2 h-6 w-full max-w-[400px]">
+              {previewIdx !== null ? (
+                <>
+                  <span className="text-yellow-300 text-sm font-bold">{DRAGON_NAMES[previewIdx]}</span>
+                  <button
+                    onClick={handleClosePreview}
+                    className="text-gray-500 hover:text-white text-xs border border-gray-700 rounded px-2 py-0.5 transition-colors"
+                  >
+                    ← Back
+                  </button>
+                </>
+              ) : (
+                <p className="text-gray-400 text-sm font-medium">
+                  {store.dragonsUnlocked > 0 ? DRAGON_NAMES[store.dragonsUnlocked - 1] : 'Waiting to hatch...'}
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* RIGHT: Problem + dragons — stacked vertically */}
@@ -276,7 +304,8 @@ export function HatcheryGameScreen() {
                 </div>
               </div>
 
-              <div className={`flex gap-2 mb-2 ${shakeInput ? 'animate-bounce' : ''}`}>
+              {/* Desktop input — hidden on mobile and tablet */}
+              <div className={`hidden lg:flex gap-2 mb-2 ${shakeInput ? 'animate-bounce' : ''}`}>
                 <input
                   ref={inputRef}
                   type="number"
@@ -296,11 +325,47 @@ export function HatcheryGameScreen() {
                 </button>
               </div>
 
+              {/* Numpad — shown on mobile and tablet, hidden on desktop */}
+              <div className={`lg:hidden ${shakeInput ? 'animate-bounce' : ''}`}>
+                {/* Answer display */}
+                <div className={`bg-gray-800 border rounded-lg px-4 py-3 mb-3 text-right font-mono text-2xl font-bold min-h-[52px] transition-colors ${
+                  answerInput ? 'text-white border-green-600' : 'text-gray-500 border-gray-600'
+                }`}>
+                  {answerInput || '—'}
+                </div>
+                {/* Keypad grid */}
+                <div className="grid grid-cols-3 gap-2 mb-2">
+                  {['7','8','9','4','5','6','1','2','3','±','0','⌫'].map(key => (
+                    <button
+                      key={key}
+                      onPointerDown={e => { e.preventDefault(); handleNumpad(key); }}
+                      disabled={isAnimating}
+                      className={`rounded-xl py-4 text-xl font-bold transition-all active:scale-95 disabled:opacity-40 select-none ${
+                        key === '⌫'
+                          ? 'bg-gray-600 hover:bg-gray-500 text-red-300'
+                          : key === '±'
+                          ? 'bg-gray-600 hover:bg-gray-500 text-blue-300'
+                          : 'bg-gray-700 hover:bg-gray-600 text-white'
+                      }`}
+                    >
+                      {key}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onPointerDown={e => { e.preventDefault(); handleSubmit(); }}
+                  disabled={isAnimating || !answerInput}
+                  className="w-full bg-green-700 hover:bg-green-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xl py-4 rounded-xl transition-colors active:scale-95 select-none"
+                >
+                  Go!
+                </button>
+              </div>
+
               {!store.hintUsed && !hintText && (
                 <button
                   onClick={handleHint}
                   disabled={isAnimating}
-                  className="text-gray-500 hover:text-yellow-400 text-xs transition-colors disabled:opacity-40"
+                  className="text-gray-500 hover:text-yellow-400 text-xs transition-colors disabled:opacity-40 mt-1"
                 >
                   Hint (-8 pts)
                 </button>

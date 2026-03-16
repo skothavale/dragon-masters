@@ -46,7 +46,7 @@ const HatcheryGame = forwardRef<HatcherySceneRef, {}>((_, ref) => {
     };
   }, []);
 
-  return <div ref={containerRef} className="w-full aspect-square max-w-[400px]" />;
+  return <div ref={containerRef} className="w-full aspect-square" />;
 });
 
 HatcheryGame.displayName = 'HatcheryGame';
