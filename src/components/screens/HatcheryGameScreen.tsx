@@ -130,7 +130,8 @@ export function HatcheryGameScreen() {
         }, 500);
       }
     } else {
-      setFeedback({ text: `Wrong! Answer was ${store.currentProblem!.answer}`, color: 'text-red-400' });
+      const penaltyMsg = result.pointsEarned < 0 ? ` (${result.pointsEarned} pts)` : '';
+      setFeedback({ text: `Wrong! Answer was ${store.currentProblem!.answer}${penaltyMsg}`, color: 'text-red-400' });
       setShakeInput(true);
       setTimeout(() => setShakeInput(false), 500);
       sceneRef.current?.updateEggProgress(0);
@@ -227,7 +228,7 @@ export function HatcheryGameScreen() {
               <p className="text-yellow-400 text-3xl font-bold">{hatchingName}</p>
             </div>
           )}
-          <div className={isHatching ? 'w-[min(90vw,80vh)]' : 'w-full max-w-[400px] md:w-[400px]'}>
+          <div className={isHatching ? 'w-[min(90vw,80vh)]' : 'w-full max-w-[400px] md:w-[300px] lg:w-[360px] xl:w-[400px]'}>
             <HatcheryGame ref={sceneRef} />
           </div>
           {!isHatching && (
@@ -299,13 +300,13 @@ export function HatcheryGameScreen() {
 
               <div className="text-center mb-4">
                 <div className="text-gray-400 text-xs mb-1">Solve:</div>
-                <div className="text-white text-4xl font-bold font-mono">
+                <div className="text-white text-3xl lg:text-4xl font-bold font-mono">
                   {store.currentProblem?.expression ?? '...'} = ?
                 </div>
               </div>
 
-              {/* Desktop input — hidden on mobile and tablet */}
-              <div className={`hidden lg:flex gap-2 mb-2 ${shakeInput ? 'animate-bounce' : ''}`}>
+              {/* Desktop input — hidden on mobile and tablet, visible on wide desktop only */}
+              <div className={`hidden xl:flex gap-2 mb-2 ${shakeInput ? 'animate-bounce' : ''}`}>
                 <input
                   ref={inputRef}
                   type="number"
@@ -325,8 +326,8 @@ export function HatcheryGameScreen() {
                 </button>
               </div>
 
-              {/* Numpad — shown on mobile and tablet, hidden on desktop */}
-              <div className={`lg:hidden ${shakeInput ? 'animate-bounce' : ''}`}>
+              {/* Numpad — shown on mobile and all tablets, hidden only on wide desktop */}
+              <div className={`xl:hidden ${shakeInput ? 'animate-bounce' : ''}`}>
                 {/* Answer display */}
                 <div className={`bg-gray-800 border rounded-lg px-4 py-3 mb-3 text-right font-mono text-2xl font-bold min-h-[52px] transition-colors ${
                   answerInput ? 'text-white border-green-600' : 'text-gray-500 border-gray-600'
@@ -340,7 +341,7 @@ export function HatcheryGameScreen() {
                       key={key}
                       onPointerDown={e => { e.preventDefault(); handleNumpad(key); }}
                       disabled={isAnimating}
-                      className={`rounded-xl py-4 text-xl font-bold transition-all active:scale-95 disabled:opacity-40 select-none ${
+                      className={`rounded-xl py-3 md:py-3.5 lg:py-4 text-xl font-bold transition-all active:scale-95 disabled:opacity-40 select-none ${
                         key === '⌫'
                           ? 'bg-gray-600 hover:bg-gray-500 text-red-300'
                           : key === '±'
@@ -355,7 +356,7 @@ export function HatcheryGameScreen() {
                 <button
                   onPointerDown={e => { e.preventDefault(); handleSubmit(); }}
                   disabled={isAnimating || !answerInput}
-                  className="w-full bg-green-700 hover:bg-green-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xl py-4 rounded-xl transition-colors active:scale-95 select-none"
+                  className="w-full bg-green-700 hover:bg-green-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xl py-3 md:py-3.5 lg:py-4 rounded-xl transition-colors active:scale-95 select-none"
                 >
                   Go!
                 </button>
