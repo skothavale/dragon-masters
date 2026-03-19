@@ -47,6 +47,21 @@ export function GameSelectScreen() {
             Play
           </div>
         </button>
+        <button
+          onClick={() => setCurrentGame('BATTLE')}
+          className="rounded-2xl p-6 md:p-8 bg-purple-900/40 border border-purple-700/50 backdrop-blur w-full md:w-80 text-left transition-all hover:shadow-lg hover:shadow-amber-900/30 hover:border-amber-500/60 group flex flex-col"
+        >
+          <div className="text-6xl md:text-8xl mb-4">⚔️</div>
+          <h2 className="text-xl md:text-2xl font-bold text-purple-100 mb-2 group-hover:text-amber-400 transition-colors">
+            Battle of the Dragons
+          </h2>
+          <p className="text-purple-300 text-sm md:text-base mb-6 flex-1">
+            2-player battle! Earn dragons by solving math, pick your fighter, then battle head-to-head to claim victory!
+          </p>
+          <div className="bg-gradient-to-r from-amber-600 to-orange-600 text-white font-bold py-3 px-6 rounded-2xl text-center shadow-lg shadow-amber-900/30 text-lg">
+            Play
+          </div>
+        </button>
       </div>
     </div>
   );

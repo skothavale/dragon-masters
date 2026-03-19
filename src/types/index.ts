@@ -1,5 +1,5 @@
 export type Screen = 'START' | 'GAME' | 'VICTORY' | 'GAMEOVER';
-export type GameMode = 'SELECT' | 'STORM_CASTLE' | 'HATCHERY';
+export type GameMode = 'SELECT' | 'STORM_CASTLE' | 'HATCHERY' | 'BATTLE';
 export type HatcheryScreen = 'START' | 'GAME' | 'VICTORY';
 export type CharmType = 'FIRE' | 'ICE' | 'LIGHTNING';
 export type RoomType = 'ENTRANCE' | 'FLOOR' | 'DOOR' | 'TREASURE' | 'CHARM_FIRE' | 'CHARM_ICE' | 'CHARM_LIGHTNING' | 'FINAL_VAULT';
@@ -47,4 +47,46 @@ export interface HatcheryLeaderboardEntry {
   score: number;
   dragonsUnlocked: number;
   date: string;
+}
+
+export type BattlePhase =
+  | 'SETUP'
+  | 'COLLECTION_P1'
+  | 'PASS_TO_P2'
+  | 'COLLECTION_P2'
+  | 'DRAGON_SELECT_P1'
+  | 'PASS_TO_P1_SELECT'
+  | 'DRAGON_SELECT_P2'
+  | 'BATTLE'
+  | 'VICTORY';
+
+export type DragonRarity = 'common' | 'uncommon' | 'rare';
+export type DragonShape = 'serpentine' | 'wyvern' | 'drake';
+export type FireColor = 'blazing' | 'icy' | 'storm' | 'toxic' | 'holy';
+
+export interface BattleDragon {
+  id: string;
+  name: string;
+  shape: DragonShape;
+  colorName: string;
+  colorBg: string;
+  colorBorder: string;
+  fireColor: FireColor;
+  fireEmoji: string;
+  rarity: DragonRarity;
+  power: number;
+  health: number;
+}
+
+export interface BattlePlayer {
+  name: string;
+  grade: Grade;
+  dragons: BattleDragon[];
+  selectedDragon: BattleDragon | null;
+  correctTowardNextDragon: number;
+}
+
+export interface BattleProblem {
+  expression: string;
+  answer: number;
 }
